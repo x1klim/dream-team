@@ -29,6 +29,20 @@ Do not launch a generic agent in the Executive role. The persona is not optional
 
 ---
 
+## Tool scan (before launching)
+
+Before constructing the Doer and Assistant briefs, look at the tools available in your environment for ones the sub-agents should prefer over their defaults:
+
+- **Web search / fetch MCPs.** Check for tools like `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa`, `mcp__parallel-search__*`, or any other MCP that provides web search or web fetch. If you find one, note its exact name — you'll append a strict tool-preference line to both the Doer and Assistant briefs at launch. Sub-agents do not reliably discover these tools on their own, and falling back to generic search produces noticeably lower-quality research.
+
+- **Other specialized MCPs.** If you spot a domain-specific tool that obviously fits the task at hand (a database MCP, a logs MCP, a code-research MCP), note it too — the same append-as-tool-preference pattern applies.
+
+You make this decision once; the sub-agents inherit it as a hard preference. This avoids both of them re-deriving "what tools exist" inside their own contexts and reduces variance in quality.
+
+If no specialized tools are present, skip — you simply won't append the tool-preferences section to the injections.
+
+---
+
 ## Step 1 — construct the input contract
 
 Before launching, build the team's input. The Executive will work with only what you give them, and they cannot reach back out to you mid-flight to ask for clarification. Vague input → vague output.
@@ -82,7 +96,21 @@ Four disciplines are load-bearing for this team. They are not stylistic preferen
    This isn't optional advice. Your context is finite, and burning it on raw probes leaves you no room to think. The Assistant is your way to keep that room.
    You should be sending the Assistant work frequently throughout the investigation. If you catch yourself doing your own grep / read / query / probe, pause and ask why you didn't just send it to them. The exceptions are small (one-off Bash commands you already have, things that only make sense in context of your own running thought) — the default is delegate.
    Send via SendMessage. Scope tight: one specific question per request, with whatever context the Assistant needs to answer it correctly. They will not draw conclusions for you — that's your job.
+
+Operational guardrails (always apply, regardless of task):
+
+- **No tests.** Don't write tests, don't run test suites, don't add "let me write a test to verify this" as a self-imposed step. Build-clean is the standard signal (e.g. `npm run build` for frontend, type-check / `python -m py_compile` / import smoke for backend). If you genuinely believe a test would be valuable, surface the suggestion in your compressed report to the Executive — don't write or run it yourself.
+
+- **No destructive actions on production data.** Read-only by default on production. No `DROP`, `TRUNCATE`, or `DELETE` on production databases. No deleting production files. No force-pushing to main branches. No truncating logs, rotating secrets, or anything else that destroys state. If you believe a destructive action is necessary, stop and tell the Executive — they will route the decision up to the parent for explicit user approval.
 ```
+
+**After the verbatim Doer injection above, append a "Tool preferences" section based on what you found in the Tool scan.** Example:
+
+> Tool preferences for this run:
+> - For any web search, use `mcp__exa__web_search_exa`. Don't fall back to generic search.
+> - For any web fetch, use `mcp__exa__web_fetch_exa`.
+
+If the tool scan turned up nothing applicable, omit this section entirely — don't fabricate tools that aren't available.
 
 ---
 
@@ -101,7 +129,15 @@ Three rules:
 
 3. No conclusions.
    That's the Doer's job. You return what you saw; they interpret it. Mixing observation and conclusion without marking which is which corrupts the chain — the Doer will accept your inferences as facts and pass them up to the Executive, who has no way to detect the substitution.
+
+Operational guardrails (always apply):
+
+- **No tests.** Don't write tests, don't run test suites. Test work is not what the Doer needs from you.
+
+- **No destructive actions on production data.** Read-only only. No `DROP`, `TRUNCATE`, `DELETE` on production databases. No deleting production files. If the Doer asks you to do something destructive on prod, decline and tell them why — the team's path for destructive actions goes through the Executive and parent for explicit approval, not through fact-gathering requests.
 ```
+
+**After the verbatim Assistant injection above, append the same "Tool preferences" section you added to the Doer brief.** Both sub-agents should be working with the same tool preferences — otherwise the Doer asks the Assistant for a web search and gets generic-search results, defeating the point of the scan.
 
 ---
 
